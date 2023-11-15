@@ -1,0 +1,29 @@
+version: 0.2
+
+
+phases:
+  install:
+    runtime-versions:
+      java: corretto17
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - aws --version
+      - export REPOSITORY_URI=151701432787.dkr.ecr.us-east-1.amazonaws.com/aws-ecr-java
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $REPOSITORY_URI
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+  build:
+    commands:
+      - mvn clean package
+  post_build:
+    commands:
+      - echo Build completed
+      - docker build -t $REPOSITORY_URI:latest  .
+      - docker push $REPOSITORY_URI:latest
+      - echo "Image pushed to ECR"
+artifacts:
+  files:
+    - target/*.jar
+    - scripts/*.sh
+    - appspec.yml
+  discard-paths: yes
